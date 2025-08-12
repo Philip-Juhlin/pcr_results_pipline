@@ -1,0 +1,69 @@
+* Block Type = 384-Well Block
+* Calibration Background is expired  = No
+* Calibration Background performed on  = 2025-04-11 10:17:30 AM CEST
+* Calibration FAM is expired  = No
+* Calibration FAM performed on  = 2025-04-11 10:45:48 AM CEST
+* Calibration NED is expired  = No
+* Calibration NED performed on  = 2025-04-11 11:19:35 AM CEST
+* Calibration ROI is expired  = No
+* Calibration ROI performed on  = 2025-04-11 10:09:22 AM CEST
+* Calibration ROX is expired  = No
+* Calibration ROX performed on  = 2025-04-11 11:10:48 AM CEST
+* Calibration SYBR is expired  = No
+* Calibration SYBR performed on  = 2025-04-11 11:28:34 AM CEST
+* Calibration TAMRA is expired  = No
+* Calibration TAMRA performed on  = 2025-04-11 10:54:14 AM CEST
+* Calibration Uniformity is expired  = No
+* Calibration Uniformity performed on  = 2025-04-11 10:26:53 AM CEST
+* Calibration VIC is expired  = No
+* Calibration VIC performed on  = 2025-04-11 10:36:38 AM CEST
+* Chemistry = TAQMAN
+* Experiment Barcode = 
+* Experiment Comments = NA
+* Experiment File Name = I:\Common\6. Lab operations\PCR-runs\B384_001975 250811 EH Q.eds
+* Experiment Name = B384_001975 250811 EH Q
+* Experiment Run End Time = 2025-08-11 13:50:21 PM CEST
+* Experiment Type = Standard Curve
+* Experiment User Name = NA
+* Instrument Name = 278860668
+* Instrument Serial Number = 278860668
+* Instrument Type = QuantStudio(TM) 6 Flex System
+* Passive Reference = ROX
+* Quantification Cycle Method = Ct
+* Signal Smoothing On = true
+* Stage/ Cycle where Analysis is performed = Stage 2, Step 2
+
+[Results]
+Well	Well Position	Sample Name	Target Name	Ct Threshold	Baseline Start	Baseline End	Comments	Reporter	CT
+1	A1	SE-25-0906-002-1A	FatA	0.100	3	15	1887722	VIC	27.137
+2	A2	SE-25-0906-002-1A	B11b	0.100	3	15	1887723	FAM	Undetermined
+3	A3	SE-25-0906-002-1A	Sh	0.100	3	15	1887724	FAM	Undetermined
+4	A4	SE-25-0906-002-1A	n	0.100	3	15	1887725	FAM	Undetermined
+5	A5	SE-25-0906-002-1A	pt	0.100	3	15	1887726	FAM	Undetermined
+6	A6	SE-25-0906-002-1A	SbEP1	0.100	3	15	1887727	FAM	Undetermined
+7	A7	SE-25-0906-002-1A	T35S	0.100	3	15	1887728	FAM	Undetermined
+8	A8	SE-25-0906-002-1A	DP73496	0.100	3	15	1887729	FAM	Undetermined
+25	B1	SE-25-0906-002-1B	FatA	0.100	3	15	1887730	VIC	25.966
+26	B2	SE-25-0906-002-1B	B11b	0.100	3	15	1887731	FAM	Undetermined
+27	B3	SE-25-0906-002-1B	Sh	0.100	3	15	1887732	FAM	Undetermined
+28	B4	SE-25-0906-002-1B	n	0.100	3	15	1887733	FAM	Undetermined
+29	B5	SE-25-0906-002-1B	pt	0.100	3	15	1887734	FAM	Undetermined
+30	B6	SE-25-0906-002-1B	SbEP1	0.100	3	15	1887735	FAM	Undetermined
+31	B7	SE-25-0906-002-1B	T35S	0.100	3	15	1887736	FAM	Undetermined
+32	B8	SE-25-0906-002-1B	DP73496	0.100	3	15	1887737	FAM	Undetermined
+337	O1	NC_0000066808	FatA	0.100	3	15	1887738	VIC	Undetermined
+338	O2	NC_0000066810	B11b	0.100	3	15	1887740	FAM	Undetermined
+339	O3	NC_0000066812	Sh	0.100	3	15	1887742	FAM	Undetermined
+340	O4	NC_0000066814	n	0.100	3	15	1887744	FAM	Undetermined
+341	O5	NC_0000066816	pt	0.100	3	15	1887746	FAM	Undetermined
+342	O6	NC_0000066818	SbEP1	0.100	3	15	1887748	FAM	Undetermined
+343	O7	NC_0000066820	T35S	0.100	3	15	1887750	FAM	Undetermined
+344	O8	NC_0000066822	DP73496	0.100	3	15	1887752	FAM	Undetermined
+361	P1	PC_RAPESEED_0000066809	FatA	0.100	3	15	1887739	VIC	25.917
+362	P2	PC_T45_0000066811	B11b	0.100	3	15	1887741	FAM	30.166
+363	P3	PC_LLRICE62_0000066813	Sh	0.100	3	15	1887743	FAM	30.234
+364	P4	PC_GA21_0000066815	n	0.100	3	15	1887745	FAM	29.581
+365	P5	PC_MON1445_0000066817	pt	0.100	3	15	1887747	FAM	30.221
+366	P6	PC_RT73_0000066819	SbEP1	0.100	3	15	1887749	FAM	29.017
+367	P7	PC_CAMV_0000066821	T35S	0.100	3	15	1887751	FAM	27.844
+368	P8	PC_DP73496_0000066823	DP73496	0.100	3	15	1887753	FAM	31.112

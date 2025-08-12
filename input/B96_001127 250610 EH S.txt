@@ -1,0 +1,105 @@
+* Block Type = 96well
+* Chemistry = TAQMAN
+* Experiment File Name = I:\Common\6. Lab operations\PCR-runs\B96_001127 250610 EH S.eds
+* Experiment Run End Time = 2025-06-10 12:52:47 PM CEST
+* Instrument Type = steponeplus
+* Passive Reference = ROX
+
+[Results]
+Well	Sample Name	Target Name	Task	Reporter	Quencher	Cт	Cт Mean	Cт SD	Quantity	Quantity Mean	Quantity SD	Automatic Ct Threshold	Ct Threshold	Automatic Baseline	Baseline Start	Baseline End	Comments
+A1	SE-25-0578-001-1A	TR	UNKNOWN	VIC	TAMRA	16.6357	16.6357					false	0.1	false	1	10	1830978
+A2	SE-25-0578-001-1A	PS1	UNKNOWN	VIC	TAMRA	Undetermined						false	0.1	false	3	15	1830976
+A3	SE-25-0578-001-1A	35S_SPK	UNKNOWN	FAM	TAMRA	32.5212	32.5212					false	0.1	false	3	15	1830977
+A4																	
+A5																	
+A6																	
+A7																	
+A8																	
+A9																	
+A10																	
+A11																	
+A12																	
+B1	SE-25-0578-001-1B	TR	UNKNOWN	VIC	TAMRA	16.7078	16.7078					false	0.1	false	1	10	1830982
+B2	SE-25-0578-001-1B	PS1	UNKNOWN	VIC	TAMRA	Undetermined						false	0.1	false	3	15	1830980
+B3	SE-25-0578-001-1B	35S_SPK	UNKNOWN	FAM	TAMRA	32.0226	32.0226					false	0.1	false	3	15	1830981
+B4																	
+B5																	
+B6																	
+B7																	
+B8																	
+B9																	
+B10																	
+B11																	
+B12																	
+C1	SE-25-0578-002-1A	TR	UNKNOWN	VIC	TAMRA	16.8274	16.8274					false	0.1	false	1	10	1830990
+C2	SE-25-0578-002-1A	PS1	UNKNOWN	VIC	TAMRA	Undetermined						false	0.1	false	3	15	1830988
+C3	SE-25-0578-002-1A	35S_SPK	UNKNOWN	FAM	TAMRA	32.6298	32.6298					false	0.1	false	3	15	1830989
+C4																	
+C5																	
+C6																	
+C7																	
+C8																	
+C9																	
+C10																	
+C11																	
+C12																	
+D1	SE-25-0578-002-1B	TR	UNKNOWN	VIC	TAMRA	16.6631	16.6631					false	0.1	false	1	10	1830994
+D2	SE-25-0578-002-1B	PS1	UNKNOWN	VIC	TAMRA	37.8733	37.8733					false	0.1	false	3	15	1830992
+D3	SE-25-0578-002-1B	35S_SPK	UNKNOWN	FAM	TAMRA	32.1276	32.1276					false	0.1	false	3	15	1830993
+D4																	
+D5																	
+D6																	
+D7																	
+D8																	
+D9																	
+D10																	
+D11																	
+D12																	
+E1	SE-25-0578-003-1A	TR	UNKNOWN	VIC	TAMRA	17.9729	17.9729					false	0.1	false	1	10	1831002
+E2	SE-25-0578-003-1A	PS1	UNKNOWN	VIC	TAMRA	Undetermined						false	0.1	false	3	15	1831000
+E3	SE-25-0578-003-1A	35S_SPK	UNKNOWN	FAM	TAMRA	32.6092	32.6092					false	0.1	false	3	15	1831001
+E4																	
+E5																	
+E6																	
+E7																	
+E8																	
+E9																	
+E10																	
+E11																	
+E12																	
+F1	SE-25-0578-003-1B	TR	UNKNOWN	VIC	TAMRA	17.1775	17.1775					false	0.1	false	1	10	1831006
+F2	SE-25-0578-003-1B	PS1	UNKNOWN	VIC	TAMRA	Undetermined						false	0.1	false	3	15	1831004
+F3	SE-25-0578-003-1B	35S_SPK	UNKNOWN	FAM	TAMRA	33.1107	33.1107					false	0.1	false	3	15	1831005
+F4																	
+F5																	
+F6																	
+F7																	
+F8																	
+F9																	
+F10																	
+F11																	
+F12																	
+G1	NC_0000063574	TR	UNKNOWN	VIC	TAMRA	32.0803	32.0803					false	0.1	false	1	10	1833360
+G2	NC_0000063576	PS1	UNKNOWN	VIC	TAMRA	38.0661	38.0661					false	0.1	false	3	15	1833362
+G3	NC_0000063578	35S_SPK	UNKNOWN	FAM	TAMRA	Undetermined						false	0.1	false	3	15	1833364
+G4																	
+G5																	
+G6																	
+G7																	
+G8																	
+G9																	
+G10																	
+G11																	
+G12																	
+H1	PC_RAPESEED_0000063575	TR	UNKNOWN	VIC	TAMRA	13.935	13.935					false	0.1	false	1	10	1833361
+H2	PC_PEA_0000063577	PS1	UNKNOWN	VIC	TAMRA	24.2528	24.2528					false	0.1	false	3	15	1833363
+H3	SC_MON1445_0000063579	35S_SPK	UNKNOWN	FAM	TAMRA	31.873	31.873					false	0.1	false	3	15	1833365
+H4	PC_MON1445_0000063580	35S_SPK	UNKNOWN	FAM	TAMRA	30.6313	30.6313					false	0.1	false	3	15	1833366
+H5																	
+H6																	
+H7																	
+H8																	
+H9																	
+H10																	
+H11																	
+H12																	
