@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import shutil
 import prefect
-
+from dateutil import parser, tz
 # function to normalize stepone file
     # handle crylic characters
     # handle metadata
@@ -61,11 +61,24 @@ def parse_files():
 
             df = standardize_df(df)
 
+            #print(f"{filename}:\n", df)
+
             # handle the metadata
 
-            df = standardize_meta(df, metadata)
+            clean_metadata = standardize_meta(metadata)
 
+            print(f"{filename}:\n", clean_metadata)
 
+# Map known timezone abbreviations to tzinfo objects
+TZINFOS = {
+    "CEST": tz.gettz("Europe/Stockholm"), 
+    "CET": tz.gettz("Europe/Stockholm"),
+}
+def extract_filename(fullpath:str) -> str:
+    return os.path.basename(fullpath)
+def clean_run_endtime(time_str):
+    dt = parser.parse(time_str, fuzzy=True, tzinfos=TZINFOS) 
+    return pd.to_datetime(dt) 
 
 # standardise metadata
 # we want the 
@@ -75,20 +88,43 @@ def parse_files():
 # block type,
 # run end time (but im not sure if the pcr computers have the correct dates....)
 
-def standardize_meta(df: pd.dataframe , metadata: dict):
+def standardize_meta(metadata):
 
     key_map = {
     "File Name": "file_name",
     "Experiment File Name": "file_name",
     "Instrument Type": "instrument_type",
-    "Instrument Serial Number": "instrument_serial_number",
+    "Instrument Type=": "instrument_type",
+   # "Instrument Serial Number": "instrument_serial_number",
     "Block Type": "block_type",
     "Experiment Run End Time": "run_end_time",
     "Run End Data/Time": "run_end_time",
     }
-    cleaned_meta = {}
-    return metadata
 
+    desired_order = [
+        "file_name",
+        "instrument_type",
+        "block_type",
+        "run_end_time"
+    ]
+
+    cleaned_meta_raw = {}
+    for key, value in metadata.items():
+        if key in key_map:
+            clean_key = key_map[key]
+            clean_value = value.strip()
+            if clean_key == "file_name":
+                clean_value = extract_filename(clean_value)
+            if clean_key == "run_end_time":
+                clean_value = clean_run_endtime(clean_value) 
+            cleaned_meta_raw[clean_key] = clean_value
+
+    cleaned_meta = {}
+    for k in desired_order:
+        if k in cleaned_meta_raw:
+            cleaned_meta[k] = cleaned_meta_raw[k]
+
+    return cleaned_meta
 
 # standardise dataframe used for all types of input files.
 def standardize_df(df):
@@ -115,7 +151,5 @@ def standardize_df(df):
         )
         df['ct'] = pd.to_numeric(df['ct'], errors='coerce')
 
-    
-
-    
     return df
+parse_files()
