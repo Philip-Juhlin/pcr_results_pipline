@@ -1,51 +1,43 @@
-# PCR Results Pipeline
+# PCR Results Processing Pipeline
 
-This is a simple pipeline for processing PCR result files from different directories and formats. The goal is to normalize and standardize the data so it can be easily analyzed downstream.
+This is a Python-based pipeline for processing PCR result files dropped into an input folder.  
+It parses metadata and tabular data, normalizes and standardizes the results, and outputs cleaned files for further analysis or import.
 
 ---
 
-## Overview
+## Features
 
-The pipeline handles three different types of input files and normalizes them into a standard format:
-
-- **StepOne files**  
-  - Handles Cyrillic characters  
-  - Extracts and processes metadata  
-  - Drops unnecessary columns  
-
-- **QS6 files**  
-  - Processes metadata  
-  - Drops unnecessary columns  
-
-- **PRO files**  
-  - Normalizes sample names  
-  - Drops unnecessary columns  
+- Watches the `input/` folder continuously and processes new `.txt` files as they appear.  
+- Extracts metadata and result tables from raw files with flexible parsing.  
+- Standardizes metadata keys and DataFrame columns for consistent downstream use.  
+- Handles timezone-aware parsing of run end times.  
+- Moves processed files to `input/processed/` and problematic files to `input/error/`.  
+- Saves outputs in multiple target directories for analysis, warehouse storage, and LIMS imports.
 
 ---
 
 ## Directory Structure
 
-- `input/` — raw input files  
-- `input/processed/` — processed intermediate files  
-- `cleaned/` — cleaned and normalized output files  
-- `warehouse/` — final aggregated storage  
+- input/ # Incoming raw files to process
+- input/processed/ # Successfully processed files moved here
+- input/error/ # Files moved here if processing fails
+- warehouse/ # Final warehouse storage CSVs
+- analysis_files/new/ # Analysis-ready tab-delimited files
+- lims_import_files/input/ # Files formatted for LIMS import
 
-All necessary folders are created automatically if they don't exist.
+Directories are created automatically if missing.
 
 ---
 
-## Key Functions
+## How It Works
 
-- `parse_files()`  
-  - Reads files from `input/`  
-  - Extracts metadata from lines starting with `* ` or `# `  
-  - Finds the `[Results]` section and loads it as a pandas DataFrame  
-  - Calls a function to standardize the DataFrame  
-
-- `standardize_meta(metadata: dict)`  
-  - Placeholder function to normalize metadata fields  
-
-- Standardization functions for each file type (not fully implemented in pseudocode)  
+1. The script watches the `input/` folder every 5 seconds (default poll interval).  
+2. Any `.txt` files found are parsed to extract metadata and the `[Results]` section as a DataFrame.  
+3. Metadata is cleaned and standardized (e.g., normalizing timezones, file names).  
+4. The DataFrame columns are normalized (case-insensitive, column renames, missing values handled).  
+5. Cleaned data is saved to the analysis, warehouse, and LIMS import folders.  
+6. The original input file is moved to `input/processed/`.  
+7. Files failing any step are moved to `input/error/` with a logged reason.
 
 ---
 
@@ -53,13 +45,12 @@ All necessary folders are created automatically if they don't exist.
 
 - Python 3.8+  
 - pandas  
-- prefect (for orchestration, if used)
+- python-dateutil  
 
-You can install dependencies with:
+Install dependencies with:
 
 ```bash
-pip install pandas prefect
-
+pip install pandas python-dateutil
 ```
 ---
 

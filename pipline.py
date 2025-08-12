@@ -1,3 +1,4 @@
+import yaml
 import pandas as pd
 from pathlib import Path
 import shutil
@@ -6,37 +7,56 @@ from io import StringIO
 import logging
 import time
 
-# Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
-logger = logging.getLogger(__name__)
-
-# Directories setup
-RAW_DIR = Path("input")
-PROCESSED_DIR = RAW_DIR / "processed"
-WAREHOUSE_DIR = Path("warehouse")
-ANALYSIS_DIR = Path("analysis_files")
-LIMS_IMPORT_DIR = Path("lims_import_files")
-ERROR_DIR = RAW_DIR / "error"
-
-REQUIRED_META_KEYS = ["file_name", "instrument_type", "block_type", "run_end_time"]
-REQUIRED_DF_COLS = [
-    'well position', 'sample name', 'test number', 'target name', 'reporter',
-    'ct threshold', 'baseline start', 'baseline end', 'ct'
-]
-
-META_KEY_MAP = {
-    "File Name": "file_name",
-    "Experiment File Name": "file_name",
-    "Instrument Type": "instrument_type",
-    "Instrument Type=": "instrument_type",
-    "Block Type": "block_type",
-    "Experiment Run End Time": "run_end_time",
-    "Run End Data/Time": "run_end_time",
-}
+# Load config
+with open("config.yaml", "r") as f:
+    config = yaml.safe_load(f)
+print(config)
+exit()
+# Setup directories from config
+RAW_DIR = Path(config["directories"]["raw_dir"])
+PROCESSED_DIR = Path(config["directories"]["processed_dir"])
+WAREHOUSE_DIR = Path(config["directories"]["warehouse_dir"])
+ANALYSIS_DIR = Path(config["directories"]["analysis_dir"])
+LIMS_IMPORT_DIR = Path(config["directories"]["lims_import_dir"])
+ERROR_DIR = Path(config["directories"]["error_dir"])
+LOG_DIR = Path(config["directories"]["log_dir"])
 
 # Create directories if missing
-for d in [RAW_DIR, PROCESSED_DIR, WAREHOUSE_DIR, ANALYSIS_DIR, LIMS_IMPORT_DIR, ERROR_DIR]:
+for d in [RAW_DIR, PROCESSED_DIR, WAREHOUSE_DIR, ANALYSIS_DIR, LIMS_IMPORT_DIR, ERROR_DIR, LOG_DIR]:
     d.mkdir(parents=True, exist_ok=True)
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO, 
+    format='%(asctime)s | %(levelname)s | %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_DIR/"pcr_pipline_log"),
+        logging.StreamHandler()
+    ])
+logger = logging.getLogger(__name__)
+
+# Config constants
+REQUIRED_META_KEYS = config["required_meta_keys"]
+REQUIRED_DF_COLS = config["required_df_cols"]
+META_KEY_MAP = config["meta_key_map"]
+POLL_INTERVAL = config.get("poll_interval_seconds", 5)
+
+# REQUIRED_META_KEYS = ["file_name", "instrument_type", "block_type", "run_end_time"]
+# REQUIRED_DF_COLS = [
+#     'well position', 'sample name', 'test number', 'target name', 'reporter',
+#     'ct threshold', 'baseline start', 'baseline end', 'ct'
+# ]
+
+# META_KEY_MAP = {
+#     "File Name": "file_name",
+#     "Experiment File Name": "file_name",
+#     "Instrument Type": "instrument_type",
+#     "Instrument Type=": "instrument_type",
+#     "Block Type": "block_type",
+#     "Experiment Run End Time": "run_end_time",
+#     "Run End Data/Time": "run_end_time",
+# }
+
 
 def move_to_error(src: Path, reason: str):
     logger.warning(f"Reason: {reason}. Moving '{src.name}' to error directory.")
@@ -147,7 +167,7 @@ def process_file(file_path: Path):
     except Exception as e:
         print(f"Error processing {file_path.name}: {e}")
 
-def watch_folder(poll_interval=5):
+def watch_folder(poll_interval=POLL_INTERVAL):
     #processed_files = set()
     while True:
         current_files = set(RAW_DIR.glob("*.txt"))

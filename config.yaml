@@ -1,0 +1,40 @@
+logging:
+  level: INFO
+  file: logfiles/pcr_pipeline.log
+
+directories:
+  raw_dir: input
+  processed_dir: input/processed
+  warehouse_dir: warehouse
+  analysis_dir: analysis_files/new
+  lims_import_dir: lims_import_files/input
+  error_dir: input/error
+  log_dir: logfiles
+
+required_meta_keys:
+  - file_name
+  - instrument_type
+  - block_type
+  - run_end_time
+
+required_df_cols:
+  - well position
+  - sample name
+  - test number
+  - target name
+  - reporter
+  - ct threshold
+  - baseline start
+  - baseline end
+  - ct
+
+meta_key_map:
+  File Name: file_name
+  Experiment File Name: file_name
+  Instrument Type: instrument_type
+  Instrument Type=: instrument_type
+  Block Type: block_type
+  Experiment Run End Time: run_end_time
+  Run End Data/Time: run_end_time
+
+poll_interval_seconds: 5
