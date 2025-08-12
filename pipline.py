@@ -2,9 +2,15 @@ import pandas as pd
 from pathlib import Path
 import shutil
 from dateutil import parser, tz
-from prefect import flow, task
 from io import StringIO
+import logging
+import time
 
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
+logger = logging.getLogger(__name__)
+
+# Directories setup
 RAW_DIR = Path("input")
 PROCESSED_DIR = RAW_DIR / "processed"
 WAREHOUSE_DIR = Path("warehouse")
@@ -12,65 +18,91 @@ ANALYSIS_DIR = Path("analysis_files")
 LIMS_IMPORT_DIR = Path("lims_import_files")
 ERROR_DIR = RAW_DIR / "error"
 
-# Ensure all dirs exist
-for d in [RAW_DIR, PROCESSED_DIR, WAREHOUSE_DIR, ANALYSIS_DIR, LIMS_IMPORT_DIR, ERROR_DIR]:
-    d.mkdir(parents=True, exist_ok=True)
-
 REQUIRED_META_KEYS = ["file_name", "instrument_type", "block_type", "run_end_time"]
-
-
 REQUIRED_DF_COLS = [
     'well position', 'sample name', 'test number', 'target name', 'reporter',
     'ct threshold', 'baseline start', 'baseline end', 'ct'
 ]
 
+META_KEY_MAP = {
+    "File Name": "file_name",
+    "Experiment File Name": "file_name",
+    "Instrument Type": "instrument_type",
+    "Instrument Type=": "instrument_type",
+    "Block Type": "block_type",
+    "Experiment Run End Time": "run_end_time",
+    "Run End Data/Time": "run_end_time",
+}
+
+# Create directories if missing
+for d in [RAW_DIR, PROCESSED_DIR, WAREHOUSE_DIR, ANALYSIS_DIR, LIMS_IMPORT_DIR, ERROR_DIR]:
+    d.mkdir(parents=True, exist_ok=True)
 
 def move_to_error(src: Path, reason: str):
-    print(f"{reason} in {src.name}, moving to error.")
+    logger.warning(f"Reason: {reason}. Moving '{src.name}' to error directory.")
     shutil.move(src, ERROR_DIR / src.name)
-
-
-def extract_filename(fullpath: str) -> str:
-    return Path(fullpath).name
-
 
 def clean_run_endtime(time_str: str):
     tzinfos = {
-        "CEST": tz.gettz("Europe/Stockholm"), 
+        "CEST": tz.gettz("Europe/Stockholm"),
         "CET": tz.gettz("Europe/Stockholm"),
     }
     return pd.to_datetime(parser.parse(time_str, fuzzy=True, tzinfos=tzinfos))
 
+def parse_raw_file(filepath: Path) -> tuple[dict, pd.DataFrame]:
+    logger.info(f"Parsing file: {filepath.name}")
+    try:
+        lines = filepath.read_text(encoding='utf-8').splitlines(keepends=True)
+        metadata = {}
+        data_lines = []
+        in_results_section = False
+        
+        for line in lines:
+            if line.strip() == '[Results]':
+                in_results_section = True
+                continue
+            
+            if in_results_section:
+                if line.strip():
+                    data_lines.append(line)
+            else:
+                if line.startswith(('* ', '# ')):
+                    sep = '=' if '=' in line else ':'
+                    key, value = line[2:].split(sep, 1)
+                    metadata[key.strip()] = value.strip()
+        
+        if not metadata:
+            raise ValueError("No metadata found")
+        if not data_lines:
+            raise ValueError("No data table found in [Results] section")
+        
+        df = pd.read_csv(StringIO(''.join(data_lines)), sep='\t')
+        return metadata, df
 
-def standardize_meta(metadata: dict):
-    key_map = {
-        "File Name": "file_name",
-        "Experiment File Name": "file_name",
-        "Instrument Type": "instrument_type",
-        "Instrument Type=": "instrument_type",
-        "Block Type": "block_type",
-        "Experiment Run End Time": "run_end_time",
-        "Run End Data/Time": "run_end_time",
-    }
-    desired_order = REQUIRED_META_KEYS
+    except (ValueError, pd.errors.ParserError) as e:
+        move_to_error(filepath, str(e))
+        raise
 
+def standardize_metadata(metadata: dict) -> dict:
     cleaned = {}
     for key, value in metadata.items():
-        if key not in key_map:
-            continue
-        clean_key = key_map[key]
-        val = value.strip()
-        if clean_key == "file_name":
-            val = extract_filename(val)
-        elif clean_key == "run_end_time":
-            val = clean_run_endtime(val)
-        cleaned[clean_key] = val
+        if key in META_KEY_MAP:
+            clean_key = META_KEY_MAP[key]
+            val = value.strip()
+            if clean_key == "file_name":
+                val = Path(val).name
+            elif clean_key == "run_end_time":
+                val = clean_run_endtime(val)
+            cleaned[clean_key] = val
+    
+    if not all(k in cleaned for k in REQUIRED_META_KEYS):
+        raise ValueError("Metadata missing required keys")
 
-    return {k: cleaned[k] for k in desired_order if k in cleaned}
+    return {k: cleaned[k] for k in REQUIRED_META_KEYS}
 
-
-def standardize_df(df: pd.DataFrame):
+def standardize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     df.columns = [c.replace("\u0442", "t").lower() for c in df.columns]
+    df.columns = df.columns.str.lower()
     df = df.dropna(subset=['sample name'])
 
     if 'well position' not in df.columns and 'well' in df.columns:
@@ -80,71 +112,53 @@ def standardize_df(df: pd.DataFrame):
     if 'well' in df.columns:
         df = df.drop('well', axis=1)
 
-    df = df.rename(columns={"comments": "test number"})
-
+    df = df.rename(columns={"comments":"test number"})
+    
     if 'ct' in df.columns:
         df['ct'] = df['ct'].replace(r'(?i)^undetermined$', 99.0, regex=True)
         df['ct'] = pd.to_numeric(df['ct'], errors='coerce')
-
+    
     return df[REQUIRED_DF_COLS]
 
-
-def parse_metadata(lines):
-    metadata = {}
-    for line in lines:
-        if line.startswith(('* ', '# ')):
-            sep = '=' if '=' in line else ':'
-            key, value = line[2:].split(sep, 1)
-            metadata[key.strip()] = value.strip()
-        if line.strip() == '[Results]':
-            break
-    return metadata
-
-
-@task
-def process_file(filename: str):
+def save_and_move_file(df: pd.DataFrame, clean_metadata: dict, filename: str):
     filepath = RAW_DIR / filename
-    lines = filepath.read_text(encoding='utf-8').splitlines(keepends=True)
-
-    metadata = parse_metadata(lines)
-    if not metadata:
-        return move_to_error(filepath, "No metadata found")
-
-    try:
-        results_start = lines.index('[Results]\n') + 1
-    except ValueError:
-        return move_to_error(filepath, "No [Results] section")
-
-    table_lines = [l for l in lines[results_start:] if l.strip()]
-    if not table_lines:
-        return move_to_error(filepath, "No data table")
-
-    try:
-        df = pd.read_csv(StringIO(''.join(table_lines)), sep='\t')
-        df = standardize_df(df)
-    except KeyError as e:
-        return move_to_error(filepath, f"Missing required column {e}")
-    except Exception as e:
-        return move_to_error(filepath, f"Unexpected error {e}")
-
-    clean_metadata = standardize_meta(metadata)
-    if not all(k in clean_metadata for k in REQUIRED_META_KEYS):
-        return move_to_error(filepath, "Metadata missing required keys")
-
+    
+    # Add metadata columns to df
     for k, v in clean_metadata.items():
         df[k] = v
 
-    (ANALYSIS_DIR / f"{filepath.stem}_analysis.txt").write_text(df.to_csv(sep='\t', index=False))
-    df[df['test number'].notna()].to_csv(LIMS_IMPORT_DIR / f"{filepath.stem}_import.csv", index=False)
-    df[df['test number'].notna()].to_csv(WAREHOUSE_DIR / f"{filepath.stem}_wh.csv", index=False)
+    output_stem = Path(filename).stem
+    df.to_csv(ANALYSIS_DIR / f"{output_stem}_analysis.txt", sep='\t', index=False)
 
-    #shutil.move(filepath, PROCESSED_DIR / filename)
+    filtered_df = df[df['test number'].notna()]
+    if not filtered_df.empty:
+        filtered_df.to_csv(LIMS_IMPORT_DIR / f"{output_stem}_import.csv", index=False)
+        filtered_df.to_csv(WAREHOUSE_DIR / f"{output_stem}_wh.csv", index=False)
 
+    shutil.move(filepath, PROCESSED_DIR / filename)
+    logger.info(f"Successfully processed and moved '{filename}'.")
 
-@flow
-def pcr_processing_flow():
-    for filename in RAW_DIR.glob("*.txt"):
-        process_file(filename.name)
+def process_file(file_path: Path):
+    try:
+        metadata, df = parse_raw_file(file_path)
+        clean_metadata = standardize_metadata(metadata)
+        standardized_df = standardize_dataframe(df)
+        save_and_move_file(standardized_df, clean_metadata, file_path.name)
+    except Exception as e:
+        print(f"Error processing {file_path.name}: {e}")
 
-if __name__ == '__main__':
-    pcr_processing_flow()
+def watch_folder(poll_interval=5):
+    #processed_files = set()
+    while True:
+        current_files = set(RAW_DIR.glob("*.txt"))
+        #new_files = current_files - processed_files
+        for file_path in current_files:
+            print(f"Found new file: {file_path.name}, processing...")
+            process_file(file_path)
+            #processed_files.add(file_path)
+        time.sleep(poll_interval)
+
+if __name__ == "__main__":
+    print("Starting folder watcher...")
+    watch_folder()
+
