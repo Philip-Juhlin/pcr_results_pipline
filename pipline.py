@@ -49,6 +49,7 @@ def parse_files():
                 # this does not drop empty test numbers.
                 df = standardize_df(df)
 
+
                 clean_metadata = standardize_meta(metadata)
 
                 for key, value in clean_metadata.items():
@@ -56,15 +57,15 @@ def parse_files():
 
                 # write to file and move processed files
                 # write to analysis dir can contain empty testnumber uses \t in vba macro so use that
-                analysis_path = os.path.join(analysis_dir, filename.replace('.txt', '_analysis.txt'))
-                df.to_csv(analysis_path, index=False, sep='\t') 
-                # write to the import dir cannot contain empty testnumber as the interface will through exception
-                df = df.dropna(subset='test number')
-                import_path = os.path.join(lims_import_dir, filename.replace('.txt', '_import.csv'))
-                df.to_csv(import_path, index=False) 
-                # write to the warehouse directory for future use dont include empty testnumbers
-                warehouse_path = os.path.join(warehouse_dir, filename.replace('.txt', '_wh.csv'))
-                df.to_csv(warehouse_path, index=False) 
+                # analysis_path = os.path.join(analysis_dir, filename.replace('.txt', '_analysis.txt'))
+                # df.to_csv(analysis_path, index=False, sep='\t') 
+                # # write to the import dir cannot contain empty testnumber as the interface will through exception
+                # df = df.dropna(subset='test number')
+                # import_path = os.path.join(lims_import_dir, filename.replace('.txt', '_import.csv'))
+                # df.to_csv(import_path, index=False) 
+                # # write to the warehouse directory for future use dont include empty testnumbers
+                # warehouse_path = os.path.join(warehouse_dir, filename.replace('.txt', '_wh.csv'))
+                # df.to_csv(warehouse_path, index=False) 
 
                 #move processed files
             #shutil.move(filepath, os.path.join(processed_dir, filename))
@@ -149,6 +150,17 @@ def standardize_df(df):
         )
         df['ct'] = pd.to_numeric(df['ct'], errors='coerce')
 
+    cols_to_keep = [
+        'well position', 
+        'sample name', 
+        'target name', 
+        'test number', 
+        'reporter', 
+        'ct threshold', 
+        'baseline start', 
+        'baseline end', 
+        'ct']
+    df = df[cols_to_keep]
     return df
 
 
