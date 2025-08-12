@@ -5,31 +5,18 @@ import os
 import shutil
 import prefect
 from dateutil import parser, tz
-# function to normalize stepone file
-    # handle crylic characters
-    # handle metadata
-    # drop columns to standard format
-    # write to file 
-# function to normalize qs6 files
-    # handle metadata
-    # drop columns to standard format
-    # write to file 
-# function to normlize pro files
-    # handle sample names
-    # drop columns to standard format
-    # write to file 
 
 raw_dir = 'input'
 processed_dir = 'input/processed'
-cleaned_dir = 'cleaned'
 warehouse_dir = 'warehouse'
+analysis_dir = 'analysis_files'
+lims_import_dir = 'lims_import_files'
 
 os.makedirs(raw_dir, exist_ok=True)
 os.makedirs(processed_dir, exist_ok=True)
-os.makedirs(cleaned_dir, exist_ok=True)
 os.makedirs(warehouse_dir, exist_ok=True)
-
-# parse files
+os.makedirs(analysis_dir, exist_ok=True)
+os.makedirs(lims_import_dir, exist_ok=True)
 
 def parse_files():
     for filename in os.listdir(raw_dir):
@@ -37,65 +24,72 @@ def parse_files():
             filepath = os.path.join(raw_dir, filename)
             with open(filepath, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
+            print(filepath)
+            metadata = {}
+            for line in lines:
+                if line.startswith('* '):
+                    key, value = line[2:].split('=', 1)
+                    metadata[key.strip()] = value.strip()
+                if line.startswith('# '):
+                    key, value = line[2:].split(':', 1)  
+                    metadata[key.strip()] = value.strip()
+                if line.strip() == '[Results]':
+                    break
+            try:
+                results_start = lines.index('[Results]\n') + 1
+            except ValueError:
+                continue
+            table_lines = lines[results_start:]
+            table_lines = [l for l in table_lines if l.strip()]
+            
+            if table_lines:
+                from io import StringIO
+                df = pd.read_csv(StringIO(''.join(table_lines)), sep='\t')
 
-        metadata = {}
-        for line in lines:
-            if line.startswith('* '):
-                key, value = line[2:].split('=', 1)
-                metadata[key.strip()] = value.strip()
-            if line.startswith('# '):
-                key, value = line[2:].split(':', 1)  
-                metadata[key.strip()] = value.strip()
-            if line.strip() == '[Results]':
-                break
-        try:
-            results_start = lines.index('[Results]\n') + 1
-        except ValueError:
-            continue
-        table_lines = lines[results_start:]
-        table_lines = [l for l in table_lines if l.strip()]
-        
-        if table_lines:
-            from io import StringIO
-            df = pd.read_csv(StringIO(''.join(table_lines)), sep='\t')
+                # this does not drop empty test numbers.
+                df = standardize_df(df)
 
-            df = standardize_df(df)
+                clean_metadata = standardize_meta(metadata)
 
-            #print(f"{filename}:\n", df)
+                for key, value in clean_metadata.items():
+                    df[key] = value
 
-            # handle the metadata
+                # write to file and move processed files
+                # write to analysis dir can contain empty testnumber uses \t in vba macro so use that
+                analysis_path = os.path.join(analysis_dir, filename.replace('.txt', '_analysis.txt'))
+                df.to_csv(analysis_path, index=False, sep='\t') 
+                # write to the import dir cannot contain empty testnumber as the interface will through exception
+                df = df.dropna(subset='test number')
+                import_path = os.path.join(lims_import_dir, filename.replace('.txt', '_import.csv'))
+                df.to_csv(import_path, index=False) 
+                # write to the warehouse directory for future use dont include empty testnumbers
+                warehouse_path = os.path.join(warehouse_dir, filename.replace('.txt', '_wh.csv'))
+                df.to_csv(warehouse_path, index=False) 
 
-            clean_metadata = standardize_meta(metadata)
+                #move processed files
+            #shutil.move(filepath, os.path.join(processed_dir, filename))
+                            
 
-            print(f"{filename}:\n", clean_metadata)
 
-# Map known timezone abbreviations to tzinfo objects
-TZINFOS = {
-    "CEST": tz.gettz("Europe/Stockholm"), 
-    "CET": tz.gettz("Europe/Stockholm"),
-}
 def extract_filename(fullpath:str) -> str:
     return os.path.basename(fullpath)
+
+
 def clean_run_endtime(time_str):
+    TZINFOS = {
+        "CEST": tz.gettz("Europe/Stockholm"), 
+        "CET": tz.gettz("Europe/Stockholm"),
+    }
     dt = parser.parse(time_str, fuzzy=True, tzinfos=TZINFOS) 
     return pd.to_datetime(dt) 
 
-# standardise metadata
-# we want the 
-# file name, 
-# intrument type, 
-# instrument serial number 
-# block type,
-# run end time (but im not sure if the pcr computers have the correct dates....)
 
 def standardize_meta(metadata):
-
     key_map = {
     "File Name": "file_name",
     "Experiment File Name": "file_name",
     "Instrument Type": "instrument_type",
     "Instrument Type=": "instrument_type",
-   # "Instrument Serial Number": "instrument_serial_number",
     "Block Type": "block_type",
     "Experiment Run End Time": "run_end_time",
     "Run End Data/Time": "run_end_time",
@@ -126,7 +120,7 @@ def standardize_meta(metadata):
 
     return cleaned_meta
 
-# standardise dataframe used for all types of input files.
+
 def standardize_df(df):
 
     df.columns = [col.replace('\u0442', 't') for col in df.columns]
@@ -141,7 +135,11 @@ def standardize_df(df):
     if "comments" not in df.columns:
                 df[["comments", "sample name"]] = df["sample name"].str.split("@", n=1, expand=True)
 
-    df = df.dropna(subset=['comments'])
+    # might keep empty ones in case manual entry on machine and handle this later in the pipline
+    #df = df.dropna(subset=['comments'])
+
+    if 'well' in df.columns:
+        df = df.drop('well', axis=1)
 
     df = df.rename(columns={"comments":"test number"})
     
@@ -152,4 +150,6 @@ def standardize_df(df):
         df['ct'] = pd.to_numeric(df['ct'], errors='coerce')
 
     return df
+
+
 parse_files()
