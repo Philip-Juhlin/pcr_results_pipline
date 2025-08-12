@@ -1,5 +1,3 @@
-# pipline for different dirs psudocode
-# required libraries
 import pandas as pd
 import os
 import shutil
@@ -11,12 +9,14 @@ processed_dir = 'input/processed'
 warehouse_dir = 'warehouse'
 analysis_dir = 'analysis_files'
 lims_import_dir = 'lims_import_files'
+error_dir = 'input/error'
 
 os.makedirs(raw_dir, exist_ok=True)
 os.makedirs(processed_dir, exist_ok=True)
 os.makedirs(warehouse_dir, exist_ok=True)
 os.makedirs(analysis_dir, exist_ok=True)
 os.makedirs(lims_import_dir, exist_ok=True)
+os.makedirs(error_dir, exist_ok=True)
 
 def parse_files():
     for filename in os.listdir(raw_dir):
@@ -47,28 +47,50 @@ def parse_files():
                 df = pd.read_csv(StringIO(''.join(table_lines)), sep='\t')
 
                 # this does not drop empty test numbers.
-                df = standardize_df(df)
+                try:
+                    df = standardize_df(df)
+                except KeyError as e:
+                    print(f"missing required column {e} in {filename} moving to {error_dir}")
+                    shutil.move(filepath, os.path.join(error_dir, filename))
+                    continue
+                except Exception as e:
+                    print(f"Unexpected error {e} in {filename} moving to {error_dir}")
+                    shutil.move(filepath, os.path.join(error_dir, filename))
+                    continue
 
+                if not metadata:
+                    print(f"No metadata found in {filename}, skipping.")
+                    shutil.move(filepath, os.path.join(error_dir, filename))
+                    continue
 
                 clean_metadata = standardize_meta(metadata)
+
+                required_keys = [ 
+                    "file_name",
+                    "instrument_type",
+                    "block_type",
+                    "run_end_time"]
+
+                if not all(key in clean_metadata for key in required_keys):
+                    print(f"Metadata missing required keys in {filename}, skipping.")
+                    shutil.move(filepath, os.path.join(error_dir, filename))
+                    continue
 
                 for key, value in clean_metadata.items():
                     df[key] = value
 
                 # write to file and move processed files
-                # write to analysis dir can contain empty testnumber uses \t in vba macro so use that
-                # analysis_path = os.path.join(analysis_dir, filename.replace('.txt', '_analysis.txt'))
-                # df.to_csv(analysis_path, index=False, sep='\t') 
-                # # write to the import dir cannot contain empty testnumber as the interface will through exception
-                # df = df.dropna(subset='test number')
-                # import_path = os.path.join(lims_import_dir, filename.replace('.txt', '_import.csv'))
-                # df.to_csv(import_path, index=False) 
-                # # write to the warehouse directory for future use dont include empty testnumbers
-                # warehouse_path = os.path.join(warehouse_dir, filename.replace('.txt', '_wh.csv'))
-                # df.to_csv(warehouse_path, index=False) 
-
+                analysis_path = os.path.join(analysis_dir, filename.replace('.txt', '_analysis.txt'))
+                df.to_csv(analysis_path, index=False, sep='\t') 
+                # write to the import dir cannot contain empty testnumber as the interface will through exception
+                df = df.dropna(subset='test number')
+                import_path = os.path.join(lims_import_dir, filename.replace('.txt', '_import.csv'))
+                df.to_csv(import_path, index=False) 
+                # write to the warehouse directory for future use dont include empty testnumbers
+                warehouse_path = os.path.join(warehouse_dir, filename.replace('.txt', '_wh.csv'))
+                df.to_csv(warehouse_path, index=False) 
                 #move processed files
-            #shutil.move(filepath, os.path.join(processed_dir, filename))
+            shutil.move(filepath, os.path.join(processed_dir, filename))
                             
 
 
@@ -136,8 +158,6 @@ def standardize_df(df):
     if "comments" not in df.columns:
                 df[["comments", "sample name"]] = df["sample name"].str.split("@", n=1, expand=True)
 
-    # might keep empty ones in case manual entry on machine and handle this later in the pipline
-    #df = df.dropna(subset=['comments'])
 
     if 'well' in df.columns:
         df = df.drop('well', axis=1)
