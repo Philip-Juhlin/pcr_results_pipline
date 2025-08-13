@@ -152,7 +152,7 @@ def save_and_move_file(df: pd.DataFrame, filename: str):
     logger.info(f"Successfully processed and moved '{filename}'.")
 
 def build_limsml(df: pd.DataFrame, filename: str):
-
+    df = df.copy()
    # Ensure test number is normalized
     df['test number'] = df['test number'].astype(float).astype(int).astype(str)
 
@@ -244,6 +244,6 @@ def watch_folder(poll_interval=POLL_INTERVAL):
         time.sleep(poll_interval)
 
 if __name__ == "__main__":
-    print("Starting folder watcher...")
+    logger.info("Starting folder watcher...")
     watch_folder()
 
