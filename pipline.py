@@ -10,8 +10,6 @@ import time
 # Load config
 with open("config.yaml", "r") as f:
     config = yaml.safe_load(f)
-print(config)
-exit()
 # Setup directories from config
 RAW_DIR = Path(config["directories"]["raw_dir"])
 PROCESSED_DIR = Path(config["directories"]["processed_dir"])
@@ -27,10 +25,10 @@ for d in [RAW_DIR, PROCESSED_DIR, WAREHOUSE_DIR, ANALYSIS_DIR, LIMS_IMPORT_DIR, 
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO, 
+    level=getattr(logging, config["logging"]["level"].upper(),logging.INFO), 
     format='%(asctime)s | %(levelname)s | %(message)s',
     handlers=[
-        logging.FileHandler(LOG_DIR/"pcr_pipline_log"),
+        logging.FileHandler(config["logging"]["file"]),
         logging.StreamHandler()
     ])
 logger = logging.getLogger(__name__)
@@ -40,22 +38,6 @@ REQUIRED_META_KEYS = config["required_meta_keys"]
 REQUIRED_DF_COLS = config["required_df_cols"]
 META_KEY_MAP = config["meta_key_map"]
 POLL_INTERVAL = config.get("poll_interval_seconds", 5)
-
-# REQUIRED_META_KEYS = ["file_name", "instrument_type", "block_type", "run_end_time"]
-# REQUIRED_DF_COLS = [
-#     'well position', 'sample name', 'test number', 'target name', 'reporter',
-#     'ct threshold', 'baseline start', 'baseline end', 'ct'
-# ]
-
-# META_KEY_MAP = {
-#     "File Name": "file_name",
-#     "Experiment File Name": "file_name",
-#     "Instrument Type": "instrument_type",
-#     "Instrument Type=": "instrument_type",
-#     "Block Type": "block_type",
-#     "Experiment Run End Time": "run_end_time",
-#     "Run End Data/Time": "run_end_time",
-# }
 
 
 def move_to_error(src: Path, reason: str):
@@ -152,9 +134,10 @@ def save_and_move_file(df: pd.DataFrame, clean_metadata: dict, filename: str):
 
     filtered_df = df[df['test number'].notna()]
     if not filtered_df.empty:
-        filtered_df.to_csv(LIMS_IMPORT_DIR / f"{output_stem}_import.csv", index=False)
         filtered_df.to_csv(WAREHOUSE_DIR / f"{output_stem}_wh.csv", index=False)
-
+    if not filtered_df.empty:
+        filtered_df = filtered_df.drop(columns=['well position', 'sample name', 'target name', 'file_name','block_type','run_end_time'])
+        filtered_df.to_csv(LIMS_IMPORT_DIR / f"{output_stem}_import.csv", index=False)
     shutil.move(filepath, PROCESSED_DIR / filename)
     logger.info(f"Successfully processed and moved '{filename}'.")
 
