@@ -6,6 +6,7 @@ from dateutil import parser, tz
 from io import StringIO
 import logging
 import time
+import xml.etree.ElementTree as ET
 
 # Load config
 with open("config.yaml", "r") as f:
@@ -43,6 +44,27 @@ POLL_INTERVAL = config.get("poll_interval_seconds", 5)
 def move_to_error(src: Path, reason: str):
     logger.warning(f"Reason: {reason}. Moving '{src.name}' to error directory.")
     shutil.move(src, ERROR_DIR / src.name)
+
+def instrument_name(df: pd.DataFrame) -> pd.DataFrame:
+    instrument_dict = {
+        'QuantStudio™ 6 Pro System': 'E163',
+        'QuantStudio(TM) 6 Flex System': 'E95',
+        'ViiA 7': 'E50',
+        'steponeplus': 'E51'
+    }
+
+    # Replace values in the column where they match the keys
+    if 'instrument_type' in df.columns:
+        df['instrument_type'] = df['instrument_type'].map(instrument_dict).fillna(df['instrument_type'])
+
+    return df
+
+def merge_df_metadate(df: pd.DataFrame, clean_metadata: dict):
+    
+    # Add metadata columns to df
+    for k, v in clean_metadata.items():
+        df[k] = v
+    return df
 
 def clean_run_endtime(time_str: str):
     tzinfos = {
@@ -122,33 +144,99 @@ def standardize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     
     return df[REQUIRED_DF_COLS]
 
-def save_and_move_file(df: pd.DataFrame, clean_metadata: dict, filename: str):
+def save_and_move_file(df: pd.DataFrame, filename: str):
     filepath = RAW_DIR / filename
     
-    # Add metadata columns to df
-    for k, v in clean_metadata.items():
-        df[k] = v
-
     output_stem = Path(filename).stem
     df.to_csv(ANALYSIS_DIR / f"{output_stem}_analysis.txt", sep='\t', index=False)
 
     filtered_df = df[df['test number'].notna()]
     if not filtered_df.empty:
         filtered_df.to_csv(WAREHOUSE_DIR / f"{output_stem}_wh.csv", index=False)
-    if not filtered_df.empty:
-        filtered_df = filtered_df.drop(columns=['well position', 'sample name', 'target name', 'file_name','block_type','run_end_time'])
-        filtered_df.to_csv(LIMS_IMPORT_DIR / f"{output_stem}_import.csv", index=False)
+
     shutil.move(filepath, PROCESSED_DIR / filename)
     logger.info(f"Successfully processed and moved '{filename}'.")
+
+def build_limsml(df: pd.DataFrame, filename: str):
+
+   # Ensure test number is normalized
+    df['test number'] = df['test number'].astype(float).astype(int).astype(str)
+
+    df = instrument_name(df)
+
+    # Group by TEST_NUMBER
+    grouped = {tn: group.to_dict(orient='records') 
+               for tn, group in df.groupby('test number')}
+
+    # Build XML
+    limsml = ET.Element("limsml")
+    header = ET.SubElement(limsml, "header")
+    body = ET.SubElement(limsml, "body")
+    transaction = ET.SubElement(body, "transaction", response_type="system")
+    system = ET.SubElement(transaction, "system")
+    entity_sample = ET.SubElement(system, "entity", type="SAMPLE")
+
+    # SAMPLE-level actions
+    actions = ET.SubElement(entity_sample, "actions")
+    action = ET.SubElement(actions, "action")
+    ET.SubElement(action, "command").text = "RESULT_ENTRY"
+    ET.SubElement(action, "parameter", name="ANAL_TRAIN_REASON").text = "TRUE"
+    ET.SubElement(action, "parameter", name="INST_TRAIN_REASON").text = "TRUE"
+
+    children_sample = ET.SubElement(entity_sample, "children")
+
+    # Add TEST entities
+    for test_number, results in grouped.items():
+        entity_test = ET.SubElement(children_sample, "entity", type="TEST")
+        ET.SubElement(entity_test, "actions")
+        fields_test = ET.SubElement(entity_test, "fields")
+        ET.SubElement(fields_test, "field", id="TEST_NUMBER", direction="in").text = test_number
+        ET.SubElement(fields_test, "field", id="INSTRUMENT", direction="in").text = results[0]['instrument_type']
+
+        children_test = ET.SubElement(entity_test, "children")
+
+        # Add RESULT entities
+        for row in results:
+            reporter = row['reporter']
+            field_map = {
+                f"Ct Threshold_{reporter}": row['ct threshold'],
+                f"Baseline Start_{reporter}": row['baseline start'],
+                f"Baseline End_{reporter}": row['baseline end'],
+                f"Ct_{reporter}": row['ct']
+            }
+            for name, value in field_map.items():
+                entity_result = ET.SubElement(children_test, "entity", type="RESULT")
+                ET.SubElement(entity_result, "actions")
+                fields_result = ET.SubElement(entity_result, "fields")
+                ET.SubElement(fields_result, "field", id="NAME", direction="in").text = name
+                ET.SubElement(fields_result, "field", id="TEXT", direction="in").text = str(value)
+
+    ET.SubElement(limsml, "errors")
+
+    output_path = LIMS_IMPORT_DIR/f"{Path(filename).stem}.limsml.xml"
+    # Save XML
+    tree = ET.ElementTree(limsml)
+    tree.write(output_path, encoding='utf-8', xml_declaration=True)
+    logger.info(f"LIMSML file created: {output_path}")
+
 
 def process_file(file_path: Path):
     try:
         metadata, df = parse_raw_file(file_path)
         clean_metadata = standardize_metadata(metadata)
         standardized_df = standardize_dataframe(df)
-        save_and_move_file(standardized_df, clean_metadata, file_path.name)
+        merged_df = merge_df_metadate(standardized_df, clean_metadata)
+
+        #construct limsml file
+        filtered_df = merged_df[merged_df['test number'].notna()]
+        if not filtered_df.empty:
+            build_limsml(filtered_df, file_path.name)
+
+        # save analyis and warehouse files and move rawfile 
+        save_and_move_file(merged_df, file_path.name)
+
     except Exception as e:
-        print(f"Error processing {file_path.name}: {e}")
+        logger.error(f"Error processing {file_path.name}: {e}")
 
 def watch_folder(poll_interval=POLL_INTERVAL):
     #processed_files = set()
