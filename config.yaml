@@ -37,9 +37,4 @@ meta_key_map:
   Experiment Run End Time: run_end_time
   Run End Data/Time: run_end_time
 
-limsml_endpoint:
-  url: localhost:5201
-  user: test
-  pass: test
-
 poll_interval_seconds: 5
