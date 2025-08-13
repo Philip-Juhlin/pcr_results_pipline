@@ -37,4 +37,10 @@ meta_key_map:
   Experiment Run End Time: run_end_time
   Run End Data/Time: run_end_time
 
+instrument_key_map:
+  QuantStudio™ 6 Pro System: E163
+  QuantStudio(TM) 6 Flex System: E95
+  ViiA 7: E50
+  steponeplus: E51
+
 poll_interval_seconds: 5

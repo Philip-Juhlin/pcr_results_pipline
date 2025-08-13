@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 REQUIRED_META_KEYS = config["required_meta_keys"]
 REQUIRED_DF_COLS = config["required_df_cols"]
 META_KEY_MAP = config["meta_key_map"]
+INSTRUMENT_KEY_MAP = config["instrument_key_map"]
 POLL_INTERVAL = config.get("poll_interval_seconds", 5)
 
 
@@ -46,16 +47,9 @@ def move_to_error(src: Path, reason: str):
     shutil.move(src, ERROR_DIR / src.name)
 
 def instrument_name(df: pd.DataFrame) -> pd.DataFrame:
-    instrument_dict = {
-        'QuantStudio™ 6 Pro System': 'E163',
-        'QuantStudio(TM) 6 Flex System': 'E95',
-        'ViiA 7': 'E50',
-        'steponeplus': 'E51'
-    }
-
     # Replace values in the column where they match the keys
     if 'instrument_type' in df.columns:
-        df['instrument_type'] = df['instrument_type'].map(instrument_dict).fillna(df['instrument_type'])
+        df['instrument_type'] = df['instrument_type'].map(INSTRUMENT_KEY_MAP).fillna(df['instrument_type'])
 
     return df
 
