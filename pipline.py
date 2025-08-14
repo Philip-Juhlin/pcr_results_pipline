@@ -135,7 +135,8 @@ def standardize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     if 'ct' in df.columns:
         df['ct'] = df['ct'].replace(r'(?i)^undetermined$', 99.0, regex=True)
         df['ct'] = pd.to_numeric(df['ct'], errors='coerce')
-    
+    cols = ['test number', 'baseline start', 'baseline end']
+    df[cols] = df[cols].astype(float).astype(int).astype(str)
     return df[REQUIRED_DF_COLS]
 
 def save_and_move_file(df: pd.DataFrame, filename: str):
@@ -147,7 +148,9 @@ def save_and_move_file(df: pd.DataFrame, filename: str):
     filtered_df = df[df['test number'].notna()]
     if not filtered_df.empty:
         filtered_df.to_csv(WAREHOUSE_DIR / f"{output_stem}_wh.csv", index=False)
-
+        lims_df = filtered_df.drop(columns=['sample name', 'target name', 'well position', 'file_name', 'block_type',	'run_end_time'])
+        lims_df = instrument_name(lims_df)
+        lims_df.to_csv(LIMS_IMPORT_DIR/f"{output_stem}_lims.txt", sep="\t", index=False)
     shutil.move(filepath, PROCESSED_DIR / filename)
     logger.info(f"Successfully processed and moved '{filename}'.")
 
@@ -222,9 +225,9 @@ def process_file(file_path: Path):
         merged_df = merge_df_metadate(standardized_df, clean_metadata)
 
         #construct limsml file
-        filtered_df = merged_df[merged_df['test number'].notna()]
-        if not filtered_df.empty:
-            build_limsml(filtered_df, file_path.name)
+        # filtered_df = merged_df[merged_df['test number'].notna()]
+        # if not filtered_df.empty:
+        #     build_limsml(filtered_df, file_path.name)
 
         # save analyis and warehouse files and move rawfile 
         save_and_move_file(merged_df, file_path.name)
