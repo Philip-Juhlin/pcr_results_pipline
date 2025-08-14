@@ -63,3 +63,5 @@ cleaned/
 lims_import_files/
 analysis_files/
 logfiles/
+input/processed
+input/error

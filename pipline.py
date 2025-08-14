@@ -43,7 +43,7 @@ POLL_INTERVAL = config.get("poll_interval_seconds", 5)
 
 
 def move_to_error(src: Path, reason: str):
-    logger.warning(f"Reason: {reason}. Moving '{src.name}' to error directory.")
+    logger.error(f"Reason: {reason}. Moving '{src.name}' to error directory.")
     shutil.move(src, ERROR_DIR / src.name)
 
 def instrument_name(df: pd.DataFrame) -> pd.DataFrame:
@@ -136,7 +136,11 @@ def standardize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         df['ct'] = df['ct'].replace(r'(?i)^undetermined$', 99.0, regex=True)
         df['ct'] = pd.to_numeric(df['ct'], errors='coerce')
     cols = ['test number', 'baseline start', 'baseline end']
-    df[cols] = df[cols].astype(float).astype(int).astype(str)
+    for col in cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')  # convert, force errors to NaN
+            df[col] = df[col].fillna(0)                         # or choose another default
+            df[col] = df[col].astype(int).astype(str)
     return df[REQUIRED_DF_COLS]
 
 def save_and_move_file(df: pd.DataFrame, filename: str):
@@ -233,9 +237,9 @@ def process_file(file_path: Path):
         save_and_move_file(merged_df, file_path.name)
 
     except Exception as e:
-        logger.error(f"Error processing {file_path.name}: {e}")
+        move_to_error(file_path, str(e))
 
-def watch_folder(poll_interval=POLL_INTERVAL):
+def watch_folder(poll_interval=POLL_INTERVAL, stop_event=None):
     #processed_files = set()
     while True:
         current_files = set(RAW_DIR.glob("*.txt"))
@@ -244,6 +248,9 @@ def watch_folder(poll_interval=POLL_INTERVAL):
             print(f"Found new file: {file_path.name}, processing...")
             process_file(file_path)
             #processed_files.add(file_path)
+        if stop_event and stop_event.is_set():
+            logger.info("Stopping folder watcher")
+            break
         time.sleep(poll_interval)
 
 if __name__ == "__main__":

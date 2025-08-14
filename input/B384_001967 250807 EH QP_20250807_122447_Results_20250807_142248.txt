@@ -23,7 +23,7 @@
 # Exported On: 2025-08-07 02:22:48 PM CEST
 
 [Results]
-Well	Well Position	Sample Name	Target Name	Ct Threshold	Baseline Start	Baseline End	Reporter	CT
+Well	Well Position	Sample Name	Target Name	Ct Threshold	Baseline Start2	Baseline End	Reporter	CT
 374	P14	1885017@PC_MON1445_0000066542	35S_SPK	0.2	3	15	FAM	31.326
 350	O14	1885016@SC_MON1445_0000066541	35S_SPK	0.2	3	15	FAM	33.02
 326	N14	1885015@NC_0000066540	35S_SPK	0.2	3	15	FAM	UNDETERMINED
