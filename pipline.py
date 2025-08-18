@@ -244,7 +244,7 @@ def process_file(file_path: Path):
         move_to_error(file_path, str(e))
 
 def watch_folder(poll_interval=POLL_INTERVAL, stop_file=None ):
-    #processed_files = set()
+    #processed_files = set().
     while True:
         if stop_file and Path(stop_file).exists():
             logger.info("Stopping folder watcher...")
