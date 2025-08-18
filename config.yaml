@@ -18,6 +18,7 @@ required_meta_keys:
   - run_end_time
 
 required_df_cols:
+  - well
   - well position
   - sample name
   - test number

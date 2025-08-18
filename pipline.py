@@ -127,8 +127,8 @@ def standardize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         df = df.rename(columns={"well": "well position"})
     if "comments" not in df.columns and "sample name" in df.columns:
         df[["comments", "sample name"]] = df["sample name"].str.split("@", n=1, expand=True)
-    if 'well' in df.columns:
-        df = df.drop('well', axis=1)
+    if 'well' not in df.columns and 'well position' in df.columns:
+        df['well'] = df['well position']
 
     df = df.rename(columns={"comments":"test number"})
     
@@ -152,7 +152,7 @@ def save_and_move_file(df: pd.DataFrame, filename: str):
     filtered_df = df[df['test number'].notna()]
     if not filtered_df.empty:
         filtered_df.to_csv(WAREHOUSE_DIR / f"{output_stem}_wh.csv", index=False)
-        lims_df = filtered_df.drop(columns=['sample name', 'target name', 'well position', 'file_name', 'block_type',	'run_end_time'])
+        lims_df = filtered_df.drop(columns=['sample name', 'target name','well', 'well position', 'file_name', 'block_type',	'run_end_time'])
         lims_df = instrument_name(lims_df)
         lims_df.to_csv(LIMS_IMPORT_DIR/f"{output_stem}_lims.txt", sep="\t", index=False)
     shutil.move(filepath, PROCESSED_DIR / filename)
