@@ -4,6 +4,7 @@ import win32event
 import servicemanager
 import time
 import logging
+import threading
 from pathlib import Path
 from pipline import watch_folder, POLL_INTERVAL
 
@@ -31,29 +32,27 @@ class PCRPipelineService(win32serviceutil.ServiceFramework):
         logging.info("Service stop requested.")
 
     def SvcDoRun(self):
-        # Report service is running immediately
+        # Tell Windows the service is running
         self.ReportServiceStatus(win32service.SERVICE_RUNNING)
+        logging.info("Service started.")
         servicemanager.LogMsg(
             servicemanager.EVENTLOG_INFORMATION_TYPE,
             servicemanager.PYS_SERVICE_STARTED,
             (self._svc_name_, '')
         )
-        logging.info("Service started.")
-        self.main_loop()
 
-    def main_loop(self):
+        # Start the folder watcher in a separate thread
+        self.thread = threading.Thread(target=self.run_folder_watcher)
+        self.thread.start()
+
+        # Wait for stop signal
+        win32event.WaitForSingleObject(self.hWaitStop, win32event.INFINITE)
+        self.thread.join()
+        logging.info("Service stopped.")
+
+    def run_folder_watcher(self):
         try:
-            while not self.stop_requested:
-                # Call your folder-watching function with a short interval
-                watch_folder(poll_interval=POLL_INTERVAL, stop_event=self.hWaitStop)
-                
-                # Sleep a short while to avoid tight loop
-                rc = win32event.WaitForSingleObject(self.hWaitStop, 1000)
-                if rc == win32event.WAIT_OBJECT_0:
-                    break
+            watch_folder(poll_interval=POLL_INTERVAL, stop_event=self.hWaitStop)
         except Exception as e:
+            logging.exception("Error in folder watcher")
             servicemanager.LogErrorMsg(f"Pipeline error: {e}")
-            logging.exception("Pipeline error occurred.")
-
-if __name__ == '__main__':
-    win32serviceutil.HandleCommandLine(PCRPipelineService)
