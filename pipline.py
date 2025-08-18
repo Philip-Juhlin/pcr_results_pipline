@@ -239,7 +239,7 @@ def process_file(file_path: Path):
     except Exception as e:
         move_to_error(file_path, str(e))
 
-def watch_folder(poll_interval=POLL_INTERVAL, stop_event=None):
+def watch_folder(poll_interval=POLL_INTERVAL ):
     #processed_files = set()
     while True:
         current_files = set(RAW_DIR.glob("*.txt"))
@@ -248,9 +248,6 @@ def watch_folder(poll_interval=POLL_INTERVAL, stop_event=None):
             print(f"Found new file: {file_path.name}, processing...")
             process_file(file_path)
             #processed_files.add(file_path)
-        if stop_event and stop_event.is_set():
-            logger.info("Stopping folder watcher")
-            break
         time.sleep(poll_interval)
 
 if __name__ == "__main__":
