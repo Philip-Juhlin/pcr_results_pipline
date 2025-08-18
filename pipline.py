@@ -13,15 +13,16 @@ config_path = CONFIG_DIR / "config.yaml"
 # Load config
 with open(config_path, "r") as f:
     config = yaml.safe_load(f)
-
+# make a single base dir so the others are relative
+BASE_DIR = Path(config["directories"]["base_dir"])
 # Setup directories from config
-RAW_DIR = Path(config["directories"]["raw_dir"])
-PROCESSED_DIR = Path(config["directories"]["processed_dir"])
-WAREHOUSE_DIR = Path(config["directories"]["warehouse_dir"])
-ANALYSIS_DIR = Path(config["directories"]["analysis_dir"])
-LIMS_IMPORT_DIR = Path(config["directories"]["lims_import_dir"])
-ERROR_DIR = Path(config["directories"]["error_dir"])
-LOG_DIR = Path(config["directories"]["log_dir"])
+RAW_DIR = BASE_DIR / (config["directories"]["raw_dir"])
+PROCESSED_DIR = BASE_DIR / (config["directories"]["processed_dir"])
+WAREHOUSE_DIR = BASE_DIR / (config["directories"]["warehouse_dir"])
+ANALYSIS_DIR = BASE_DIR / (config["directories"]["analysis_dir"])
+LIMS_IMPORT_DIR = BASE_DIR / (config["directories"]["lims_import_dir"])
+ERROR_DIR = BASE_DIR / (config["directories"]["error_dir"])
+LOG_DIR = BASE_DIR / (config["directories"]["log_dir"])
 
 # Create directories if missing
 for d in [RAW_DIR, PROCESSED_DIR, WAREHOUSE_DIR, ANALYSIS_DIR, LIMS_IMPORT_DIR, ERROR_DIR, LOG_DIR]:
