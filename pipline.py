@@ -243,9 +243,12 @@ def process_file(file_path: Path):
     except Exception as e:
         move_to_error(file_path, str(e))
 
-def watch_folder(poll_interval=POLL_INTERVAL ):
+def watch_folder(poll_interval=POLL_INTERVAL, stop_file=None ):
     #processed_files = set()
     while True:
+        if stop_file and Path(stop_file).exists():
+            logger.info("Stopping folder watcher...")
+            break
         current_files = set(RAW_DIR.glob("*.txt"))
         #new_files = current_files - processed_files
         for file_path in current_files:
@@ -255,6 +258,7 @@ def watch_folder(poll_interval=POLL_INTERVAL ):
         time.sleep(poll_interval)
 
 if __name__ == "__main__":
+    stop_file = Path("stop.flag")
     logger.info("Starting folder watcher...")
-    watch_folder()
+    watch_folder(stop_file=stop_file)
 
