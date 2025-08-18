@@ -8,11 +8,12 @@ import os
 import logging
 import time
 import xml.etree.ElementTree as ET
-BASE_DIR = Path(__file__).parent.resolve()
-config_path = BASE_DIR / "config.yaml"
+CONFIG_DIR = Path(__file__).parent.resolve()
+config_path = CONFIG_DIR / "config.yaml"
 # Load config
 with open(config_path, "r") as f:
     config = yaml.safe_load(f)
+
 # Setup directories from config
 RAW_DIR = Path(config["directories"]["raw_dir"])
 PROCESSED_DIR = Path(config["directories"]["processed_dir"])

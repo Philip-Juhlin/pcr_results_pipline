@@ -3,6 +3,7 @@ logging:
   file: logfiles/pcr_pipeline.log
 
 directories:
+  base_dir: E:/pcr_results
   raw_dir: input
   processed_dir: input/processed
   warehouse_dir: warehouse
