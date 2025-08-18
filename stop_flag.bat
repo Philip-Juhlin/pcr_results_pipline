@@ -1,0 +1,3 @@
+@echo off
+echo Creating stop flag...
+echo stop > E:\pcr_results_pipline\stop.flag
