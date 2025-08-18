@@ -12,7 +12,7 @@ class MyService(win32serviceutil.ServiceFramework):
     _svc_type_ = win32service.SERVICE_AUTO_START
 
    
-   # _svc_account_ = "addomain\username"
+    _svc_account_ = "NT AUTHORITY\\NetworkService"
 
     def __init__(self, args):
         win32serviceutil.ServiceFramework.__init__(self, args)
