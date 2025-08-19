@@ -54,7 +54,8 @@ Pipfile.lock
 # Output files
 *.csv
 *.xlsx
-
+# documentation
+*.docx
 # Ignore data files - add if your data is big or you don't want to commit
 data/
 output/
