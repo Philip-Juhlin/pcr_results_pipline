@@ -1,12 +1,8 @@
 @echo off
-REM Clear previous stop file
-if exist E:\pcr_results_pipline\stop.flag del E:\pcr_results_pipline\stop.flag
+set BASEDIR=%~dp0
 
-REM Activate venv
-E:\pcr_results_pipline\p\venv\Scripts\activate.bat
+if exist "%BASEDIR%stop.flag" del "%BASEDIR%stop.flag"
 
-REM Run pipeline
-python E:\pcr_results_pipline\pipline.py
+"%BASEDIR%venv\Scripts\python.exe" "%BASEDIR%pipline.py"
 
-REM Exit
 exit

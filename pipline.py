@@ -33,7 +33,7 @@ logging.basicConfig(
     level=getattr(logging, config["logging"]["level"].upper(),logging.INFO), 
     format='%(asctime)s | %(levelname)s | %(message)s',
     handlers=[
-        logging.FileHandler(config["logging"]["file"]),
+        logging.FileHandler(LOG_DIR / config["logging"]["file"]),
         logging.StreamHandler()
     ])
 logger = logging.getLogger(__name__)

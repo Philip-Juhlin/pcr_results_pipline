@@ -1,9 +1,9 @@
 logging:
   level: INFO
-  file: logfiles/pcr_pipeline.log
+  file: pcr_pipeline.log
 
 directories:
-  base_dir: E:/pcr_results
+  base_dir: E:/SM_Integration/Instrument_to_LIMS/PCR_data  
   raw_dir: input
   processed_dir: input/processed
   warehouse_dir: warehouse
