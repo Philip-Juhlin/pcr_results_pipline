@@ -1,9 +1,11 @@
 logging:
   level: INFO
   file: pcr_pipeline.log
+settings:
+  enable_warehouse: false
 
 directories:
-  base_dir: E:/SM_Integration/Instrument_to_LIMS/PCR_data  
+  base_dir: E:\SM_Integration\Instrument_to_LIMS\PCR_data 
   raw_dir: input
   processed_dir: input/processed
   warehouse_dir: warehouse
@@ -17,6 +19,7 @@ required_meta_keys:
   - instrument_type
   - block_type
   - run_end_time
+  - instrument_serial_number
 
 required_df_cols:
   - well
@@ -38,11 +41,12 @@ meta_key_map:
   Block Type: block_type
   Experiment Run End Time: run_end_time
   Run End Data/Time: run_end_time
+  Instrument Serial Number: instrument_serial_number
 
 instrument_key_map:
-  QuantStudio™ 6 Pro System: E163
-  QuantStudio(TM) 6 Flex System: E95
-  ViiA 7: E50
-  steponeplus: E51
+  '2778622100020': E163
+  '278860668': E95
+  '278880932': E50
+  '2778725070009': E187
 
 poll_interval_seconds: 5

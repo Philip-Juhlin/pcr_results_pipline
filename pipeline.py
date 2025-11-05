@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 from dateutil import parser, tz
 from io import StringIO
+import sys
 import os
 import logging
 import time
@@ -25,8 +26,12 @@ ERROR_DIR = BASE_DIR / (config["directories"]["error_dir"])
 LOG_DIR = BASE_DIR / (config["directories"]["log_dir"])
 
 # Create directories if missing
-for d in [RAW_DIR, PROCESSED_DIR, WAREHOUSE_DIR, ANALYSIS_DIR, LIMS_IMPORT_DIR, ERROR_DIR, LOG_DIR]:
+for d in [RAW_DIR, PROCESSED_DIR, ANALYSIS_DIR, LIMS_IMPORT_DIR, ERROR_DIR, LOG_DIR]:
     d.mkdir(parents=True, exist_ok=True)
+if config["settings"].get("enable_warehouse", False):
+    WAREHOUSE_DIR.mkdir(parents=True, exist_ok=True)
+
+   
 
 # Setup logging
 logging.basicConfig(
@@ -51,9 +56,9 @@ def move_to_error(src: Path, reason: str):
     shutil.move(src, ERROR_DIR / src.name)
 
 def instrument_name(df: pd.DataFrame) -> pd.DataFrame:
-    # Replace values in the column where they match the keys
+    # Replace values in the column where they match the keys change to serial number if we get multiple machines of the same name
     if 'instrument_type' in df.columns:
-        df['instrument_type'] = df['instrument_type'].map(INSTRUMENT_KEY_MAP).fillna(df['instrument_type'])
+        df['instrument_type'] = df['instrument_serial_number'].map(INSTRUMENT_KEY_MAP).fillna(df['instrument_type'])
 
     return df
 
@@ -153,76 +158,100 @@ def save_and_move_file(df: pd.DataFrame, filename: str):
     output_stem = Path(filename).stem
     df.to_csv(ANALYSIS_DIR / f"{output_stem}_analysis.txt", sep='\t', index=False)
 
-    filtered_df = df[df['test number'].notna()]
+    filtered_df = df[(df['test number'].notna()) & (df['test number'] != '0')]
+
     if not filtered_df.empty:
-        filtered_df.to_csv(WAREHOUSE_DIR / f"{output_stem}_wh.csv", index=False)
-        lims_df = filtered_df.drop(columns=['sample name', 'target name','well', 'well position', 'file_name', 'block_type',	'run_end_time'])
-        lims_df = instrument_name(lims_df)
+        #filtered_df.to_csv(WAREHOUSE_DIR / f"{output_stem}_wh.csv", index=False)
+
+        if config["settings"].get("enable_warehouse", False):
+            warehouse_file = WAREHOUSE_DIR / "warehouse.csv"
+            if warehouse_file.exists():
+                existing_files = pd.read_csv(warehouse_file, usecols=["file_name"])
+                new_df = filtered_df[~filtered_df["file_name"].isin(existing_files["file_name"])]
+            else:
+                new_df = filtered_df
+            if not new_df.empty:
+                write_header = not warehouse_file.exists()
+                new_df.to_csv(
+                    warehouse_file,
+                    mode='a',
+                    header=write_header,
+                    index=False
+                )
+        filtered_df['instrument_serial_number'] = filtered_df['instrument_serial_number'].astype(str)
+        lims_df = instrument_name(filtered_df)
+        cols_to_drop = [
+        'sample name', 'target name', 'well', 'well position', 
+        'file_name', 'block_type', 'run_end_time', 'instrument_serial_number'
+        ]
+        existing_cols_to_drop = [col for col in cols_to_drop if col in filtered_df.columns]
+
+        lims_df = filtered_df.drop(columns=existing_cols_to_drop)
         lims_df.to_csv(LIMS_IMPORT_DIR/f"{output_stem}_lims.txt", sep="\t", index=False)
     shutil.move(filepath, PROCESSED_DIR / filename)
     logger.info(f"Successfully processed and moved '{filename}'.")
 
-def build_limsml(df: pd.DataFrame, filename: str):
-    df = df.copy()
-   # Ensure test number is normalized
-    df['test number'] = df['test number'].astype(float).astype(int).astype(str)
+# def build_limsml(df: pd.DataFrame, filename: str):
+#     df = df.copy()
+#    # Ensure test number is normalized
+#     df['test number'] = df['test number'].astype(float).astype(int).astype(str)
 
-    df = instrument_name(df)
+#     df = instrument_name(df)
 
-    # Group by TEST_NUMBER
-    grouped = {tn: group.to_dict(orient='records') 
-               for tn, group in df.groupby('test number')}
+#     # Group by TEST_NUMBER
+#     grouped = {tn: group.to_dict(orient='records') 
+#                for tn, group in df.groupby('test number')}
 
-    # Build XML
-    limsml = ET.Element("limsml")
-    header = ET.SubElement(limsml, "header")
-    body = ET.SubElement(limsml, "body")
-    transaction = ET.SubElement(body, "transaction", response_type="system")
-    system = ET.SubElement(transaction, "system")
-    entity_sample = ET.SubElement(system, "entity", type="SAMPLE")
+#     # Build XML
+#     limsml = ET.Element("limsml")
+#     header = ET.SubElement(limsml, "header")
+#     body = ET.SubElement(limsml, "body")
+#     transaction = ET.SubElement(body, "transaction", response_type="system")
+#     system = ET.SubElement(transaction, "system")
+#     entity_sample = ET.SubElement(system, "entity", type="SAMPLE")
 
-    # SAMPLE-level actions
-    actions = ET.SubElement(entity_sample, "actions")
-    action = ET.SubElement(actions, "action")
-    ET.SubElement(action, "command").text = "RESULT_ENTRY"
-    ET.SubElement(action, "parameter", name="ANAL_TRAIN_REASON").text = "TRUE"
-    ET.SubElement(action, "parameter", name="INST_TRAIN_REASON").text = "TRUE"
+#     # SAMPLE-level actions
+#     actions = ET.SubElement(entity_sample, "actions")
+#     action = ET.SubElement(actions, "action")
+#     ET.SubElement(action, "command").text = "RESULT_ENTRY"
+#     ET.SubElement(action, "parameter", name="ANAL_TRAIN_REASON").text = "TRUE"
+#     ET.SubElement(action, "parameter", name="INST_TRAIN_REASON").text = "TRUE"
 
-    children_sample = ET.SubElement(entity_sample, "children")
+#     children_sample = ET.SubElement(entity_sample, "children")
 
-    # Add TEST entities
-    for test_number, results in grouped.items():
-        entity_test = ET.SubElement(children_sample, "entity", type="TEST")
-        ET.SubElement(entity_test, "actions")
-        fields_test = ET.SubElement(entity_test, "fields")
-        ET.SubElement(fields_test, "field", id="TEST_NUMBER", direction="in").text = test_number
-        ET.SubElement(fields_test, "field", id="INSTRUMENT", direction="in").text = results[0]['instrument_type']
+#     # Add TEST entities
+#     for test_number, results in grouped.items():
+#         entity_test = ET.SubElement(children_sample, "entity", type="TEST")
+#         ET.SubElement(entity_test, "actions")
+#         fields_test = ET.SubElement(entity_test, "fields")
+#         ET.SubElement(fields_test, "field", id="TEST_NUMBER", direction="in").text = test_number
+#         ET.SubElement(fields_test, "field", id="INSTRUMENT", direction="in").text = results[0]['instrument_type']
 
-        children_test = ET.SubElement(entity_test, "children")
+#         children_test = ET.SubElement(entity_test, "children")
 
-        # Add RESULT entities
-        for row in results:
-            reporter = row['reporter']
-            field_map = {
-                f"Ct Threshold_{reporter}": row['ct threshold'],
-                f"Baseline Start_{reporter}": row['baseline start'],
-                f"Baseline End_{reporter}": row['baseline end'],
-                f"Ct_{reporter}": row['ct']
-            }
-            for name, value in field_map.items():
-                entity_result = ET.SubElement(children_test, "entity", type="RESULT")
-                ET.SubElement(entity_result, "actions")
-                fields_result = ET.SubElement(entity_result, "fields")
-                ET.SubElement(fields_result, "field", id="NAME", direction="in").text = name
-                ET.SubElement(fields_result, "field", id="TEXT", direction="in").text = str(value)
+#         # Add RESULT entities
+#         for row in results:
+#             reporter = row['reporter']
+#             field_map = {
+#                 f"Ct Threshold_{reporter}": row['ct threshold'],
+#                 f"Baseline Start_{reporter}": row['baseline start'],
+#                 f"Baseline End_{reporter}": row['baseline end'],
+#                 f"Ct_{reporter}": row['ct']
+#             }
+#             for name, value in field_map.items():
+#                 entity_result = ET.SubElement(children_test, "entity", type="RESULT")
+#                 ET.SubElement(entity_result, "actions")
+#                 fields_result = ET.SubElement(entity_result, "fields")
+#                 ET.SubElement(fields_result, "field", id="NAME", direction="in").text = name
+#                 ET.SubElement(fields_result, "field", id="TEXT", direction="in").text = str(value)
 
-    ET.SubElement(limsml, "errors")
+#     ET.SubElement(limsml, "errors")
 
-    output_path = LIMS_IMPORT_DIR/f"{Path(filename).stem}.limsml.xml"
-    # Save XML
-    tree = ET.ElementTree(limsml)
-    tree.write(output_path, encoding='utf-8', xml_declaration=True)
-    logger.info(f"LIMSML file created: {output_path}")
+#     output_path = LIMS_IMPORT_DIR/f"{Path(filename).stem}.limsml.xml"
+#     # Save XML
+#     tree = ET.ElementTree(limsml)
+#     tree.write(output_path, encoding='utf-8', xml_declaration=True)
+#     logger.info(f"LIMSML file created: {output_path}")
 
 
 def process_file(file_path: Path):

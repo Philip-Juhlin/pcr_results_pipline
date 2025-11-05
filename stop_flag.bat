@@ -1,3 +1,3 @@
 @echo off
 echo Creating stop flag...
-echo stop > E:\pcr_results_pipline\stop.flag
+echo stop > E:\PcrNinja\pcr_results_pipeline\stop.flag
